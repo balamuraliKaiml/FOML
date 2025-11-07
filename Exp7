@@ -1,0 +1,98 @@
+import pandas as pd
+import numpy as np
+from mlxtend.plotting import plot_decision_regions
+from sklearn.tree import DecisionTreeClassifier
+import seaborn as sns
+import matplotlib.pyplot as plt
+df = pd.DataFrame()
+df['X1']=[1,2,3,4,5,6,6,7,9,9]
+df['X2']=[5,3,6,8,1,9,5,8,9,2]
+df['label']=[1,1,0,1,0,1,0,1,0,0]
+sns.scatterplot(x=df['X1'],y=df['X2'],hue=df['label'],s=200)
+df['weights'] = 1/df.shape[0]
+df
+# Step-1 Model 1 training
+dt1 = DecisionTreeClassifier(max_depth=1)
+x = df.iloc[:,0:2].values
+y = df.iloc[:,2].values
+dt1.fit(x,y)
+plot_tree(dt1)
+plot_decision_regions(x, y, clf=dt1, legend=2)
+df['y_pred'] = dt1.predict(x)
+df
+# Step-2 Calculate total error
+def calculate_error(row):
+    return row['weights'] if row['label'] != row['y_pred'] else 0
+
+df['error'] = df.apply(calculate_error,axis=1)
+error_sum = df['error'].sum()
+error_sum
+# Step-3 Calculate Model Weight
+def calculate_model_weight(error):
+    return 0.5 * np.log((1-error)/(error))
+
+alpha1 = calculate_model_weight(error_sum)
+alpha1
+# Step -4 Update weights
+def update_row_weights(row,alpha=0.423):
+    if row['label'] == row['y_pred']:
+        return row['weights']* np.exp(-alpha)
+    else:
+        return row['weights']* np.exp(alpha)
+df['updated_weights'] = df.apply(update_row_weights,axis=1)
+df['normalized_weights'] = df['updated_weights'] / df['updated_weights'].sum()
+df['normalized_weights'].sum()
+df['cumsum_upper'] = np.cumsum(df['normalized_weights'])
+df['cumsum_lower']=df['cumsum_upper'] - df['normalized_weights']
+df[['X1','X2','label','weights','y_pred','updated_weights','cumsum_lower','cumsum_upper']]
+def create_new_dataset(df):
+    indices= []
+    for i in range(df.shape[0]):
+        a = np.random.random()
+        for index,row in df.iterrows():
+            if row['cumsum_upper']>a and a>row['cumsum_lower']:
+                indices.append(index)
+    return indices
+index_values = create_new_dataset(df)
+index_values
+second_df = df.iloc[index_values,[0,1,2,3]]
+second_df
+dt2 = DecisionTreeClassifier(max_depth=1)
+x = second_df.iloc[:,0:2].values
+y = second_df.iloc[:,2].values
+dt2.fit(x,y)
+plot_tree(dt2)
+plot_decision_regions(x, y, clf=dt2, legend=2)
+second_df['y_pred'] = dt2.predict(x)
+second_df
+error_sum2 = second_df.apply(calculate_error,axis=1).sum()
+alpha2 = calculate_model_weight(error_sum2)
+alpha2
+# Step 4 Update weights
+def update_row_weights_2(row,alpha=0.423):
+    if row['label'] == row['y_pred']:
+        return row['weights']* np.exp(-alpha)
+    else:
+        return row['weights']* np.exp(alpha)
+second_df['updated_weights'] = second_df.apply(update_row_weights_2,axis=1)
+second_df['normalized_weights'] = second_df['updated_weights'] / second_df['updated_weights'].sum()
+second_df['normalized_weights'].sum()
+second_df['cumsum_upper'] = np.cumsum(second_df['normalized_weights'])
+second_df['cumsum_lower']=second_df['cumsum_upper'] - second_df['normalized_weights']
+second_df
+# Model 3 training
+index_values3 = create_new_dataset(second_df)
+index_values3
+third_df = second_df.iloc[index_values3,[0,1,2,3]]
+third_df
+dt3 = DecisionTreeClassifier(max_depth=1)
+x = third_df.iloc[:,0:2].values
+y = third_df.iloc[:,2].values
+dt3.fit(x,y)
+plot_tree(dt3)
+plot_decision_regions(x, y, clf=dt3, legend=2)
+third_df['y_pred'] = dt3.predict(x)
+third_df
+error_sum3 = third_df.apply(calculate_error,axis=1).sum()
+alpha3 = calculate_model_weight(error_sum3)
+alpha3
